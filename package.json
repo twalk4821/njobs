@@ -1,0 +1,26 @@
+{
+  "name": "njobs",
+  "version": "1.0.0",
+  "description": "Easy concurrent jobs in Node",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/twalk4821/njobs.git"
+  },
+  "keywords": [
+    "concurrency",
+    "cluster",
+    "child",
+    "process",
+    "node"
+  ],
+  "author": "Tyler Walker",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/twalk4821/njobs/issues"
+  },
+  "homepage": "https://github.com/twalk4821/njobs#readme"
+}
