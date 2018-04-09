@@ -21,15 +21,17 @@ const runConcurrently = async (job, numJobs = 2) => {
       const worker = cluster.fork();
       workers[worker.id] = worker;
     }
-  
-    cluster.on('exit', (worker, code, signal) => {
-      console.log(`Worker ${worker.process.pid} finished`);
-      finished += 1;
-      if (finished === numJobs) {
-        console.log('done')
-      }
+
+    return new Promise(resolve => {
+      cluster.on('exit', (worker, code, signal) => {
+        console.log(`Worker ${worker.process.pid} finished`);
+        finished += 1;
+        if (finished === numJobs) {
+          console.log('done')
+          resolve(true);
+        }
+      });
     });
-  
   } else {
     console.log(`Worker ${process.pid} started`);   
     await job();
