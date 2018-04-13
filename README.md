@@ -12,3 +12,6 @@ const runConcurrently = require('njobs');
 await runConcurrently(myfunc, 2);
 console.log("Done!");
 ```
+
+## Test
+`node test.js`

@@ -1,41 +1,78 @@
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
-const workers = {};
-
-const runConcurrently = async (job, numJobs = 2) => {
+const runConcurrently = async (job, numJobs = 1, numForks) => {
   if (!job) {
-    console.log(`No job specified.`);
-    process.exit(1);
+    throw new Error(`No job specified.`);
   }
   
-  if (numJobs > numCPUs) {
-    console.log(`Maximum cpus on your device is ${numCPUs}. You specified ${numJobs}`);
-    process.exit(1);
+  if (numForks > numCPUs) {
+    throw new Error(`Maximum cpus on your device is ${numCPUs}. You tried to use ${numForks}`);
+  }
+
+  if (numForks > numJobs) {
+    numForks = numJobs;
+  }
+
+  if (!numForks) {
+    if (numJobs > numCPUs) {
+      numForks = numCPUs;
+    } else {
+      numForks = numJobs;
+    }
   }
 
   if (cluster.isMaster) {
-    let finished = 0;
+    let jobsCompleted = 0;
 
-    for (let i = 0; i < numJobs; i++) {
+    for (let i = 0; i < numForks; i++) {
       const worker = cluster.fork();
-      workers[worker.id] = worker;
     }
 
-    return new Promise(resolve => {
-      cluster.on('exit', (worker, code, signal) => {
-        console.log(`Worker ${worker.process.pid} finished`);
-        finished += 1;
-        if (finished === numJobs) {
-          console.log('done')
+    return new Promise((resolve, reject) => {
+      cluster.on('message', ({ id }) => {
+        jobsCompleted += 1;
+
+        if (jobsCompleted === numJobs) {
+          console.info(`${numJobs} jobs complete. Killing workers.`)
+
+          workerIDs = Object.keys(cluster.workers);
+          for (let i = 0; i < workerIDs.length; i++) {
+            const id = workerIDs[i];
+            const worker = cluster.workers[id];
+            worker.kill();
+          }
+          
+          console.info('done.')
           resolve(true);
+          process.exit();
+        } else {
+          const msgQueue = process._getActiveRequests();
+          if (finished + msgQueue.length < numJobs) {
+            cluster.workers[id].send('work'); 
+          } else {
+            console.info('Worker ', id, ' finished');
+            cluster.workers[id].kill();
+          }
         }
       });
     });
+
   } else {
-    console.log(`Worker ${process.pid} started`);   
-    await job();
-    process.exit();
+    console.log(`Worker ${cluster.worker.id} started`);   
+
+    const work = async () => {
+      await job();
+      cluster.worker.send({ id: cluster.worker.id });
+    };
+
+    process.on('message', (msg) => {
+      if (msg === 'work') {
+        work();
+      }
+    });
+
+    work();
   }
 }
 
