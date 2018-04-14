@@ -23,10 +23,12 @@ const runConcurrently = async (job, numJobs = 1, numForks) => {
   }
 
   if (cluster.isMaster) {
+    let jobsAssigned = 0;
     let jobsCompleted = 0;
 
     for (let i = 0; i < numForks; i++) {
-      const worker = cluster.fork();
+      const worker = cluster.fork({ child: 1 });
+      jobsAssigned += 1;
     }
 
     return new Promise((resolve, reject) => {
@@ -45,13 +47,11 @@ const runConcurrently = async (job, numJobs = 1, numForks) => {
           
           console.info('done.')
           resolve(true);
-          process.exit();
         } else {
-          const msgQueue = process._getActiveRequests();
-          if (finished + msgQueue.length < numJobs) {
-            cluster.workers[id].send('work'); 
+          if (jobsAssigned < numJobs) {
+            cluster.workers[id].send('work');     
+            jobsAssigned += 1;              
           } else {
-            console.info('Worker ', id, ' finished');
             cluster.workers[id].kill();
           }
         }
