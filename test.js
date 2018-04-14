@@ -1,10 +1,13 @@
 const runConcurrently = require('./index');
+const assert = require('assert');
+const { performance } = require('perf_hooks');
 
 const doWork = () => {
   let i = 0;
   while (i < 1000000000) {
     i += 1;
   }
+  console.log('work complete')
 }
 
 const runSequentially = (times) => {
@@ -15,19 +18,39 @@ const runSequentially = (times) => {
   }
 }
 
+const isMain = () => {
+  return !(process.env.child);
+};
+
 const test = async () => {
-  try {
-    console.time('sequential');    
-    runSequentially(8);
-    console.timeEnd('sequential');
+    try {
+      let startSeq, endSeq, startConc, endConc;
 
-    console.time('concurrent');
-    await runConcurrently(doWork, 8, 4);
-    console.timeEnd('concurrent');
+      if (isMain()) {
+        startSeq = performance.now();
+        runSequentially(6);
+        endSeq = performance.now();
+      }
 
-  } catch (e) {
-    console.log(e);
-  }
+      if (isMain()) {
+        startConc = performance.now();
+      }
+      // do 16 jobs on 4 threads faster than 6 on one
+      await runConcurrently(doWork, 16, 4);
+
+      if (isMain()) {
+        endConc = performance.now();
+        
+        console.info(`Single process took ${endSeq - startSeq} to run`);
+        console.info(`Concurrent process took ${endConc - startConc} to run`);
+
+        assert(endSeq - startSeq > endConc - startConc);
+      }
+      
+    } catch (e) {
+      console.warn(e);
+    }
 };
 
 test();
+
